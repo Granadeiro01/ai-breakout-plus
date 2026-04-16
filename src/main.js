@@ -91,6 +91,55 @@ async function recalibrate() {
   newGame();
 }
 
+// ── Difficulty picker ──────────────────────────────────────────
+//
+// Shown at boot (before the first game) and whenever the player
+// starts a new match. Blocks until the player clicks one of the
+// three cards. Writes the choice into game.difficulty so that
+// newGame() and makeBall() pick up the right paddleW / lives /
+// ball speed.
+
+function difficultyHtml() {
+  const d = CONFIG.difficulty;
+  const card = (key, title, sub) => `
+    <button type="button" class="diff-card" data-diff="${key}">
+      <h2>${title}</h2>
+      <p class="diff-sub">${sub}</p>
+      <ul class="diff-stats">
+        <li><span>Paddle</span><b>${d[key].paddleW}px</b></li>
+        <li><span>Lives</span><b>${d[key].lives}</b></li>
+        <li><span>Ball speed</span><b>${d[key].speedBase}</b></li>
+      </ul>
+    </button>`;
+  return `
+    <div class="card diff-card-wrap">
+      <h1>Choose difficulty</h1>
+      <p class="diff-hint">You can change this next game.</p>
+      <div class="diff-grid">
+        ${card('easy',   'Easy',   'Wider paddle, slower ball, 5 lives.')}
+        ${card('medium', 'Medium', 'Balanced — recommended.')}
+        ${card('hard',   'Hard',   'Narrow paddle, fast ball, 2 lives.')}
+      </div>
+    </div>`;
+}
+
+function chooseDifficulty() {
+  return new Promise((resolve) => {
+    setOverlay(difficultyHtml());
+    const overlayEl = document.getElementById('overlay');
+    overlayEl.querySelectorAll('.diff-card').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const pick = btn.dataset.diff;
+        if (CONFIG.difficulty[pick]) {
+          game.difficulty = pick;
+          setOverlay('');
+          resolve(pick);
+        }
+      });
+    });
+  });
+}
+
 function showError(html) {
   setOverlay(`<div class="card error">${html}</div>`);
 }
@@ -131,6 +180,7 @@ async function boot() {
       <h1>Camera unavailable</h1>
       <p>${e?.message ?? e}</p>
       <p>Check browser permissions, then reload. Keyboard fallback still works.</p>`);
+    await chooseDifficulty();
     newGame();
     startGameLoop();
     return;
@@ -148,6 +198,7 @@ async function boot() {
     await runCalibration(setOverlay);
   }
   setOverlay('');
+  await chooseDifficulty();
   newGame();
   startGameLoop();
 }
@@ -155,8 +206,9 @@ async function boot() {
 // ── The game loop ───────────────────────────────────────────────
 
 /** Called by the leaderboard screen's "Play again" button. */
-function onPlayAgain() {
+async function onPlayAgain() {
   setOverlay('');
+  await chooseDifficulty();
   newGame();
 }
 

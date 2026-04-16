@@ -24,12 +24,29 @@ import { game, input, consumeBlink, PHASE } from './state.js';
 // Short aliases for CONFIG sections to keep lines below readable.
 const { canvas: C, physics: P, level: L, powerup: PU } = CONFIG;
 
+/** Read the currently-selected difficulty preset, or fall back to medium. */
+function diffPreset() {
+  return CONFIG.difficulty[game.difficulty] || CONFIG.difficulty[CONFIG.defaultDifficulty];
+}
+
+/** Starting paddle width for the current difficulty. */
+export function basePaddleW() {
+  return diffPreset().paddleW;
+}
+
+/** Starting ball speed (px/s) for the current difficulty.
+ *  speedBase is in px/frame @ 60fps → multiply by 60 to get px/s. */
+export function baseBallSpeed() {
+  return diffPreset().speedBase * 60;
+}
+
 // ── Starting a match / level ─────────────────────────────────────
 
 /** Reset everything — called on first boot and on "Play again". */
 export function newGame() {
+  const d = diffPreset();
   game.score = 0;
-  game.lives = 3;
+  game.lives = d.lives;
   game.level = 1;
   game.activeBuffs = { expandUntil: 0, laserUntil: 0 };
   game.lastLaserMs = 0;
@@ -42,10 +59,11 @@ export function newGame() {
 
 /** Rebuild the paddle, ball and brick wall for the current level. */
 export function resetLevel() {
+  const pw = basePaddleW();
   game.paddle = {
-    x: C.w / 2 - P.paddleW / 2,
+    x: C.w / 2 - pw / 2,
     y: P.paddleY,
-    w: P.paddleW,
+    w: pw,
     h: P.paddleH,
   };
   const b = makeBall(true); // true = "stuck to paddle, waiting to launch"
@@ -64,7 +82,7 @@ function makeBall(stuck) {
     vy: 0,                 // velocity y
     r: P.ballR,
     stuck,                 // true until launch
-    speed: P.ballSpeed,    // speed may increase as bricks break
+    speed: baseBallSpeed(),// starting speed from the chosen difficulty
   };
 }
 
@@ -142,7 +160,8 @@ export function updatePaddle(dt, kbDir) {
 
   // Smoothly grow/shrink the paddle when Expand is active / ending.
   const expanded = performance.now() < game.activeBuffs.expandUntil;
-  const targetW = expanded ? P.paddleW * PU.expandScale : P.paddleW;
+  const baseW = basePaddleW();
+  const targetW = expanded ? baseW * PU.expandScale : baseW;
   p.w += (targetW - p.w) * Math.min(1, dt * 12);
 
   if (Math.abs(kbDir) > 0) {

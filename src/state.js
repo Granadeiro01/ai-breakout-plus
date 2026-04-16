@@ -45,6 +45,7 @@ export const input = {
 // Updated by game.js, drawn by render.js, shown in numbers by hud.js.
 export const game = {
   phase: PHASE.LOADING,                     // current mode (see PHASE above)
+  difficulty: 'medium',                     // 'easy' | 'medium' | 'hard' — chosen via picker
   score: 0,
   lives: 3,
   level: 1,

@@ -19,17 +19,30 @@ export const CONFIG = {
   canvas: { w: 960, h: 640 },
 
   // How the ball and paddle behave physically.
+  // Note: paddleW, ballSpeed, and starting lives are now set per-difficulty
+  // (see `difficulty` below). The values here are only used as the fallback
+  // defaults if somehow no difficulty has been picked.
   physics: {
-    paddleW: 110,                 // paddle width in pixels (default)
+    paddleW: 110,                 // fallback paddle width (difficulty overrides this)
     paddleH: 14,                  // paddle height
     paddleY: 600,                 // paddle's fixed y-position near the bottom
     paddleMaxVx: 1400,            // max horizontal speed when using keyboard
     ballR: 7,                     // ball radius
-    ballSpeed: 420,               // starting ball speed (pixels per second)
+    ballSpeed: 288,               // fallback starting ball speed (difficulty overrides)
     ballMaxBounceAngleDeg: 60,    // steepest angle a ball can leave the paddle
     ballSpeedUpEveryBrick: 1.5,   // how much faster the ball gets per brick
     ballMaxSpeed: 720,            // upper speed cap so it never becomes unplayable
   },
+
+  // Difficulty presets. The player picks one before each new game.
+  // `speedBase` is in pixels-per-frame at 60 fps — we convert to pixels
+  // per second internally by multiplying by 60. (px/frame @ 60fps × 60 = px/s.)
+  difficulty: {
+    easy:   { paddleW: 120, lives: 5, speedBase: 3.8 }, // 228 px/s
+    medium: { paddleW: 88,  lives: 3, speedBase: 4.8 }, // 288 px/s
+    hard:   { paddleW: 64,  lives: 2, speedBase: 5.8 }, // 348 px/s
+  },
+  defaultDifficulty: 'medium',
 
   // Head-tracking: how the nose position on camera becomes paddle position.
   head: {
