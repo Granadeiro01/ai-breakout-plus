@@ -54,8 +54,18 @@ export const game = {
   bricks: [],                               // the wall at the top
   powerups: [],                             // falling E / L pickups
   lasers: [],                               // laser beams in flight
-  activeBuffs: { expandUntil: 0, laserUntil: 0 }, // ms timestamps (0 = inactive)
+  // Timed buffs are stored as "active until ms timestamp" (0 = inactive).
+  // Laser is special — it's an *ammo counter*, not a timer.
+  activeBuffs: {
+    expandUntil: 0,
+    shrinkUntil: 0,
+    tripleUntil: 0,                         // (cosmetic only — extra balls live until lost)
+    slowUntil:   0,
+    fastUntil:   0,
+    laserAmmo:   0,                         // shots remaining; 0 = no laser
+  },
   lastLaserMs: 0,                           // last time a laser was fired
+  speedMult:   1,                           // current ball-speed multiplier (slow/fast)
   overlayText: '',                          // text shown on top of the canvas
   debug: false,                             // press D in-game to toggle
   gameFps: 0,                               // frames per second of the game loop

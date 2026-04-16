@@ -18,6 +18,18 @@ import { game, PHASE } from './state.js';
 
 const { canvas: C, palette: PAL } = CONFIG;
 
+// Lookup table: power-up kind → { letter shown on the tile, fill colour,
+// pattern style }. Patterns are a redundant accessibility cue so the
+// kinds stay distinguishable for colour-blind players.
+const PU_LOOK = {
+  expand: { label: 'E',  color: PAL.puExpand, pattern: 'vstripes' },
+  shrink: { label: 'S',  color: PAL.puShrink, pattern: 'arrows-in' },
+  triple: { label: 'T',  color: PAL.puTriple, pattern: 'dots' },
+  slow:   { label: 'SL', color: PAL.puSlow,   pattern: 'wave' },
+  fast:   { label: 'F',  color: PAL.puFast,   pattern: 'arrows-fwd' },
+  laser:  { label: 'L',  color: PAL.puLaser,  pattern: 'hatch' },
+};
+
 /** Main entry. Called from main.js every animation frame. */
 export function render(ctx) {
   // Clear the whole canvas by painting the background colour over it.
@@ -25,33 +37,27 @@ export function render(ctx) {
   ctx.fillRect(0, 0, C.w, C.h);
 
   // ── BRICKS ──────────────────────────────────────────────────
+  // Each brick already carries its own pre-resolved colour from
+  // buildBricks() in game.js, so we just draw a rounded rectangle.
   for (const br of game.bricks) {
-    if (br.hp <= 0) continue; // already broken — don't draw
-    const color = br.tier === 3 ? PAL.brickTier3
-                : br.tier === 2 ? PAL.brickTier2
-                : PAL.brickTier1;
-    roundRect(ctx, br.x, br.y, br.w, br.h, 4, color);
-    // If a multi-hit brick has been damaged, show a little crack.
-    if (br.hp < br.tier) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(br.x + 4, br.y + br.h / 2);
-      ctx.lineTo(br.x + br.w - 4, br.y + br.h / 2 - 2);
-      ctx.stroke();
-    }
+    if (br.hp <= 0) continue;
+    roundRect(ctx, br.x, br.y, br.w, br.h, 4, br.color);
   }
 
   // ── PADDLE ──────────────────────────────────────────────────
   const p = game.paddle;
   if (p) {
-    const expanded = performance.now() < game.activeBuffs.expandUntil;
-    roundRect(ctx, p.x, p.y, p.w, p.h, 6,
-              expanded ? PAL.paddleExpand : PAL.paddle);
+    const now = performance.now();
+    const expanded = now < game.activeBuffs.expandUntil;
+    const shrunk   = now < game.activeBuffs.shrinkUntil;
+    // Colour reflects which buff is active (expand wins if both somehow are).
+    const paddleColor = expanded ? PAL.paddleExpand
+                      : shrunk   ? PAL.paddleShrink
+                      :            PAL.paddle;
+    roundRect(ctx, p.x, p.y, p.w, p.h, 6, paddleColor);
 
     if (expanded) {
-      // Vertical stripes to show "Expand" is active (redundant cue:
-      // colour + pattern, for colourblind accessibility).
+      // Vertical stripes — redundant cue for "Expand" beyond the colour.
       ctx.strokeStyle = 'rgba(11, 16, 32, 0.55)';
       ctx.lineWidth = 1.5;
       for (let sx = p.x + 6; sx < p.x + p.w - 6; sx += 6) {
@@ -61,10 +67,26 @@ export function render(ctx) {
         ctx.stroke();
       }
     }
-    // Thin orange underline when Laser is ready.
-    if (performance.now() < game.activeBuffs.laserUntil) {
+    if (shrunk) {
+      // Diagonal stripes — redundant cue for "Shrink".
+      ctx.strokeStyle = 'rgba(11, 16, 32, 0.55)';
+      ctx.lineWidth = 1.2;
+      for (let sx = p.x; sx < p.x + p.w; sx += 5) {
+        ctx.beginPath();
+        ctx.moveTo(sx, p.y + 2);
+        ctx.lineTo(sx + p.h, p.y + p.h - 2);
+        ctx.stroke();
+      }
+    }
+    // Thin orange underline + ammo count when laser shots are loaded.
+    if (game.activeBuffs.laserAmmo > 0) {
       ctx.fillStyle = PAL.puLaser;
       ctx.fillRect(p.x, p.y + p.h + 2, p.w, 2);
+      ctx.fillStyle = PAL.text;
+      ctx.font = 'bold 11px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`L×${game.activeBuffs.laserAmmo}`, p.x + p.w / 2, p.y + p.h + 6);
     }
   }
 
@@ -83,45 +105,19 @@ export function render(ctx) {
   }
 
   // ── POWER-UPS ───────────────────────────────────────────────
-  // Each power-up is a coloured tile + pattern + big letter.
-  // The letter is the most important cue — it's readable even when
-  // colour and pattern are hard to tell apart.
+  // Each falling pickup is a coloured tile + pattern + big letter.
+  // The letter is the most important cue — readable even when colour
+  // and pattern are hard to tell apart.
   for (const pu of game.powerups) {
-    const color = pu.kind === 'E' ? PAL.puExpand : PAL.puLaser;
-    roundRect(ctx, pu.x - pu.w / 2, pu.y - pu.h / 2, pu.w, pu.h, 4, color);
-
-    // Clip so the pattern lines don't spill outside the tile.
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(pu.x - pu.w / 2, pu.y - pu.h / 2, pu.w, pu.h);
-    ctx.clip();
-    ctx.strokeStyle = 'rgba(11, 16, 32, 0.45)';
-    ctx.lineWidth = 1.2;
-    if (pu.kind === 'E') {
-      // Vertical stripes → "Expand"
-      for (let sx = pu.x - pu.w / 2 + 3; sx < pu.x + pu.w / 2; sx += 4) {
-        ctx.beginPath();
-        ctx.moveTo(sx, pu.y - pu.h / 2);
-        ctx.lineTo(sx, pu.y + pu.h / 2);
-        ctx.stroke();
-      }
-    } else {
-      // Diagonal hatch → "Laser"
-      for (let sx = pu.x - pu.w; sx < pu.x + pu.w; sx += 5) {
-        ctx.beginPath();
-        ctx.moveTo(sx, pu.y - pu.h / 2);
-        ctx.lineTo(sx + pu.h, pu.y + pu.h / 2);
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
-
+    const look = PU_LOOK[pu.kind] || PU_LOOK.expand;
+    roundRect(ctx, pu.x - pu.w / 2, pu.y - pu.h / 2, pu.w, pu.h, 4, look.color);
+    drawPattern(ctx, pu, look.pattern);
     // Big letter label on top.
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px -apple-system, system-ui, sans-serif';
+    ctx.font = 'bold 12px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(pu.kind, pu.x, pu.y + 0.5);
+    ctx.fillText(look.label, pu.x, pu.y + 0.5);
   }
 
   // ── HINT: "blink / space to launch" when ball is stuck ──────
@@ -142,8 +138,72 @@ function drawDebug(ctx) {
   ctx.font = '12px ui-monospace, Menlo, monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText(`gameFps ${game.gameFps.toFixed(0)}`, 8, 8);
-  ctx.fillText(`phase   ${game.phase}`, 8, 22);
+  ctx.fillText(`gameFps  ${game.gameFps.toFixed(0)}`, 8, 8);
+  ctx.fillText(`phase    ${game.phase}`, 8, 22);
+  ctx.fillText(`speedMlt ${game.speedMult.toFixed(2)}`, 8, 36);
+  ctx.fillText(`balls    ${game.balls.length}`, 8, 50);
+  ctx.fillText(`lasers   ${game.activeBuffs.laserAmmo}`, 8, 64);
+}
+
+/** Draw a redundant pattern (lines / dots) inside a power-up tile.
+ *  Each kind has its own pattern so they remain distinguishable to
+ *  colour-blind players. */
+function drawPattern(ctx, pu, pattern) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(pu.x - pu.w / 2, pu.y - pu.h / 2, pu.w, pu.h);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(11, 16, 32, 0.45)';
+  ctx.fillStyle   = 'rgba(11, 16, 32, 0.45)';
+  ctx.lineWidth = 1.2;
+  const left = pu.x - pu.w / 2, right = pu.x + pu.w / 2;
+  const top  = pu.y - pu.h / 2, bot   = pu.y + pu.h / 2;
+  switch (pattern) {
+    case 'vstripes':
+      for (let sx = left + 3; sx < right; sx += 4) {
+        ctx.beginPath(); ctx.moveTo(sx, top); ctx.lineTo(sx, bot); ctx.stroke();
+      }
+      break;
+    case 'hatch':
+      for (let sx = left - pu.w / 2; sx < right; sx += 5) {
+        ctx.beginPath(); ctx.moveTo(sx, top); ctx.lineTo(sx + pu.h, bot); ctx.stroke();
+      }
+      break;
+    case 'arrows-in':
+      // Two arrows pointing inward → "shrink".
+      ctx.beginPath();
+      ctx.moveTo(left + 2, pu.y); ctx.lineTo(left + 7, pu.y - 4); ctx.moveTo(left + 2, pu.y); ctx.lineTo(left + 7, pu.y + 4);
+      ctx.moveTo(right - 2, pu.y); ctx.lineTo(right - 7, pu.y - 4); ctx.moveTo(right - 2, pu.y); ctx.lineTo(right - 7, pu.y + 4);
+      ctx.stroke();
+      break;
+    case 'arrows-fwd':
+      // Three rightward chevrons → "fast".
+      for (let i = 0; i < 3; i++) {
+        const cx = left + 6 + i * 8;
+        ctx.beginPath();
+        ctx.moveTo(cx, pu.y - 4); ctx.lineTo(cx + 4, pu.y); ctx.lineTo(cx, pu.y + 4);
+        ctx.stroke();
+      }
+      break;
+    case 'wave':
+      // A gentle sine line → "slow".
+      ctx.beginPath();
+      ctx.moveTo(left + 2, pu.y);
+      for (let sx = left + 2; sx < right - 2; sx++) {
+        ctx.lineTo(sx, pu.y + Math.sin((sx - left) * 0.6) * 3);
+      }
+      ctx.stroke();
+      break;
+    case 'dots':
+      // Three dots → "triple".
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(left + 6 + i * 8, pu.y, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+  }
+  ctx.restore();
 }
 
 /**

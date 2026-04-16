@@ -3,12 +3,22 @@
   --bg-panel: #131A33;
   --text: #F5F5F5;
   --muted: #9AA3BD;
-  --accent: #56B4E9;   /* sky blue — paddle / expand */
-  --warn:   #E69F00;   /* orange */
-  --good:   #009E73;   /* bluish-green */
-  --alert:  #D55E00;   /* vermillion — laser pu */
-  --ball:   #F0E442;   /* yellow */
-  --violet: #CC79A7;   /* reddish-purple */
+  /* Daltonism-safe candy palette. Used everywhere — these are the
+     same hues that the canvas renderer uses, so HUD and game match. */
+  --cyan:    #00D9FF;  /* paddle, main UI */
+  --teal:    #40E0D0;  /* slow bonus */
+  --magenta: #FF006E;  /* shrink bonus, danger */
+  --orange:  #FF8C00;  /* laser, fast bonus */
+  --yellow:  #FFD60A;  /* score, expand bonus */
+  --blue:    #3A86FF;  /* triple bonus */
+  /* Aliases for legacy class names. Keep these so the rest of the
+     stylesheet doesn't need to change every time we re-skin. */
+  --accent:  var(--cyan);
+  --warn:    var(--orange);
+  --good:    var(--teal);
+  --alert:   var(--magenta);
+  --ball:    var(--yellow);
+  --violet:  var(--blue);
   --border: #2A3253;
 }
 
@@ -101,8 +111,12 @@ aside h3 { margin: 16px 0 6px; font-size: 0.85rem; color: var(--muted); text-tra
   color: #fff;
   font-size: 0.8rem;
 }
-.pu-E { background: var(--accent); }
-.pu-L { background: var(--alert); }
+.pu-E  { background: var(--yellow);  color: #1a1200; }
+.pu-S  { background: var(--magenta); color: #fff; }
+.pu-T  { background: var(--blue);    color: #fff; }
+.pu-SL { background: var(--teal);    color: #003330; font-size: 0.65rem; }
+.pu-F  { background: var(--orange);  color: #fff; }
+.pu-L  { background: var(--orange);  color: #fff; }
 
 kbd {
   display: inline-block;

@@ -60,15 +60,29 @@ export const CONFIG = {
     cooldownMs: 500,              // min gap between two fires (ms)
   },
 
-  // Power-ups that fall from broken bricks.
+  // Power-ups that fall from broken bricks. There are six kinds; one
+  // is picked at random each time a brick drops a power-up.
   powerup: {
-    dropChance: 0.2,              // 20% chance a destroyed brick drops one
+    dropChance: 0.20,             // 20% chance a destroyed brick drops one
     fallSpeed: 160,               // how fast a power-up drifts downward (px/s)
-    expandDurMs: 10000,           // "Expand" paddle stays wider this long
-    expandScale: 1.5,             // paddle width × 1.5 while Expand is active
-    laserDurMs: 12000,            // "Laser" pickup lasts this long
+    durMs: 8000,                  // most timed buffs last this long
+    // Expand / Shrink — paddle size buffs.
+    expandScale: 1.4,             // paddle width × 1.4 while Expand is active
+    expandMaxPx: 180,             // hard cap on paddle width
+    shrinkScale: 0.7,             // paddle width × 0.7 while Shrink is active
+    shrinkMinPx: 40,              // hard floor on paddle width
+    // Triple — spawns extra balls on pickup.
+    tripleSpawn: 2,               // how many extra balls appear
+    tripleSpeedMult: 1.5,         // those balls start 1.5× the normal speed
+    // Slow / Fast — multiply the ball speed.
+    slowMult: 0.7,
+    fastMult: 1.3,
+    // Laser — ammo-based, not timed. Each pickup grants this many shots.
+    laserAmmoPerPickup: 10,
     laserCooldownMs: 150,         // min gap between two laser shots (ms)
     laserSpeed: 900,              // laser projectile speed (px/s)
+    // Random pool — equal weight for each kind. Edit this array to bias drops.
+    kinds: ['expand', 'shrink', 'triple', 'slow', 'fast', 'laser'],
   },
 
   // Layout of the brick wall at the top of the screen.
@@ -79,6 +93,9 @@ export const CONFIG = {
     topPad: 80,                   // empty space above the wall
     sidePad: 40,                  // empty space to the left/right of the wall
     brickH: 22,                   // brick height in pixels
+    // Row colours, top → bottom. The Nth row uses rowColors[N % length].
+    // Top row is worth the most points (matches arcade-Breakout convention).
+    rowColors: ['magenta', 'orange', 'yellow', 'teal', 'blue', 'cyan'],
   },
 
   // Four countries shown on the leaderboard form. The "flag" is a Unicode
@@ -92,21 +109,35 @@ export const CONFIG = {
     { code: 'RS', name: 'Serbia',   flag: '\u{1F1F7}\u{1F1F8}' },
   ],
 
-  // Colour palette. Chosen from the "Okabe-Ito" set, which stays
-  // distinguishable even for people with colour-vision deficiencies.
-  // No red/green pair carries meaning anywhere in the game.
+  // Colour palette — daltonism-safe candy palette. Each named colour
+  // is used in multiple places so the game stays visually consistent
+  // (e.g. the Slow buff, its falling pickup tile, and the brick row
+  // it can come out of all share the same hue).
   palette: {
     bg: '#0B1020',                // dark navy background
-    paddle: '#56B4E9',            // sky blue paddle
-    paddleExpand: '#7FD0F3',      // lighter blue when paddle is "expanded"
-    ball: '#F0E442',              // yellow ball
-    brickTier1: '#009E73',        // bluish-green (bottom rows)
-    brickTier2: '#E69F00',        // orange (middle rows)
-    brickTier3: '#CC79A7',        // reddish-purple (top rows — worth more)
-    puExpand: '#56B4E9',          // Expand power-up colour (with "E" label)
-    puLaser: '#D55E00',           // Laser power-up colour (with "L" label)
-    laserBeam: '#F0E442',         // yellow laser beam
-    text: '#F5F5F5',              // main text colour
-    muted: '#9AA3BD',             // secondary text colour
+    text: '#F5F5F5',
+    muted: '#9AA3BD',
+    // Named hues. Six are enough for all bricks and all power-ups.
+    cyan:    '#00D9FF',           // paddle, main UI
+    teal:    '#40E0D0',           // slow bonus
+    magenta: '#FF006E',           // shrink bonus, danger
+    orange:  '#FF8C00',           // laser, fast bonus
+    yellow:  '#FFD60A',           // ball, score, expand bonus
+    blue:    '#3A86FF',           // triple bonus
+    // Aliases used by other modules. Mapping the candy palette onto the
+    // existing names so we don't have to chase every usage. Change a
+    // mapping here if you want to re-skin without touching render code.
+    paddle:        '#00D9FF',     // cyan
+    paddleExpand:  '#7AE9FF',     // lighter cyan when Expand is active
+    paddleShrink:  '#FF4D94',     // pinker cyan when Shrink is active
+    ball:          '#FFD60A',     // yellow
+    laserBeam:     '#FFD60A',     // yellow beam
+    // Per-power-up colours (keyed by power-up "kind" string).
+    puExpand:  '#FFD60A',         // E — yellow
+    puShrink:  '#FF006E',         // S — magenta
+    puTriple:  '#3A86FF',         // T — blue
+    puSlow:    '#40E0D0',         // SL — teal
+    puFast:    '#FF8C00',         // F — orange
+    puLaser:   '#FF8C00',         // L — orange
   },
 };
