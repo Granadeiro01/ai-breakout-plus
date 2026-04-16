@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Breakout+ — Accessibility Edition</title>
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+<div id="app">
+  <aside id="panel-left" aria-label="Input status">
+    <h2>AI Control</h2>
+    <div id="preview-wrap">
+      <video id="webcam" playsinline muted autoplay></video>
+      <span id="preview-badge" data-status="idle">OFF</span>
+    </div>
+    <dl id="vision-meta">
+      <dt>Face</dt><dd id="meta-face">—</dd>
+      <dt>Head&nbsp;x</dt><dd id="meta-headx">0.00</dd>
+      <dt>Blink</dt><dd id="meta-blink">0.00</dd>
+      <dt>Vision FPS</dt><dd id="meta-vfps">0</dd>
+    </dl>
+    <p class="hint">Press <kbd>D</kbd> for debug · <kbd>R</kbd> to recalibrate</p>
+  </aside>
+
+  <main id="stage" aria-label="Game">
+    <canvas id="game" width="960" height="640" tabindex="0"></canvas>
+    <div id="overlay" role="status" aria-live="polite"></div>
+  </main>
+
+  <aside id="panel-right" aria-label="Game info">
+    <h2>Game</h2>
+    <dl id="score">
+      <dt>Score</dt><dd id="hud-score">0</dd>
+      <dt>Lives</dt><dd id="hud-lives">3</dd>
+      <dt>Level</dt><dd id="hud-level">1</dd>
+    </dl>
+    <section id="legend" aria-label="Power-up legend">
+      <h3>Power-ups</h3>
+      <ul>
+        <li><span class="pu pu-E" aria-hidden="true">E</span> Expand paddle</li>
+        <li><span class="pu pu-L" aria-hidden="true">L</span> Laser (blink to fire)</li>
+      </ul>
+    </section>
+    <section id="controls" aria-label="Keyboard fallback">
+      <h3>Keyboard</h3>
+      <ul>
+        <li><kbd>←</kbd>/<kbd>→</kbd> move</li>
+        <li><kbd>Space</kbd> launch / fire</li>
+        <li><kbd>P</kbd> pause</li>
+      </ul>
+    </section>
+  </aside>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
